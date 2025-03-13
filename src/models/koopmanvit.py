@@ -81,6 +81,14 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
         evolved_latent = evolved_latent.view(batch_size * time_steps, num_features, 1, 1)  # 🛠 Adjust for missing dims
 
         out = self.decoder(evolved_latent)
+        # 🔍 Debugging: Print decoder output shape
+        print(f"📏 Decoder output shape: {out.shape} | Expected: ({batch_size}, {time_steps}, {channels}, {height}, {width})")
+
+        # Ensure reshaping is valid
+        num_elements = batch_size * time_steps * channels * height * width
+        if out.numel() != num_elements:
+            print(f"🚨 WARNING: Decoder output has {out.numel()} elements, expected {num_elements}. Reshaping may be incorrect!")
+
         out = out.view(batch_size, time_steps, channels, height, width)
         
         return out
