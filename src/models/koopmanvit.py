@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from torchvision.models.vision_transformer import VisionTransformer
 
 class KoopmanViT(nn.Module):
-    def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, num_heads=8, depth=6, koopman_dim=128):
+    def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, num_heads=8, depth=6, koopman_dim=128,  **kwargs):
         super().__init__()
         
         # Vision Transformer for spatial feature extraction
