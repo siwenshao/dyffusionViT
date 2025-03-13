@@ -1,16 +1,26 @@
 import torch
 import torch.nn as nn
 import timm
-from src.models._base_model import BaseModel  # ✅ Import BaseModel from DYffusion
+from src.models._base_model import BaseModel  # Import BaseModel from DYffusion
 
-class KoopmanViT(BaseModel):  # ✅ Inherits from BaseModel
+class KoopmanViT(BaseModel):  # Inherits from BaseModel
     def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, 
-                 num_heads=8, depth=6, koopman_dim=128, with_time_emb=False, **kwargs):  # ✅ Add with_time_emb
-        super().__init__(**kwargs)  # ✅ Pass kwargs to BaseModel
-        self.with_time_emb = with_time_emb  # ✅ Store the parameter (but do nothing with it)
+                 num_heads=8, depth=6, koopman_dim=128, with_time_emb=False, dropout=0.0, **kwargs):  # ✅ Add with_time_emb
+        super().__init__(**kwargs)  # Pass kwargs to BaseModel
+        self.with_time_emb = with_time_emb  # Store the parameter (but do nothing with it)
+        
+# In UNet-based models, with_time_emb=True means the model:
 
-        self.save_hyperparameters()  # ✅ Store hparams (used in DYffusion)
+# Adds a time encoding to inputs.
+# Improves temporal generalization by learning embeddings for time steps.
+# In KoopmanViT:
 
+# Time information is handled differently (via Koopman evolution).
+# Koopman theory models continuous time evolution explicitly, so adding extra time embeddings might be redundant.
+
+        self.save_hyperparameters()  # Store hparams (used in DYffusion)
+
+        self.dropout = nn.Dropout(dropout) 
         # Vision Transformer for spatial feature extraction
         self.vit = timm.create_model(
             "vit_base_patch16_224",
@@ -30,6 +40,7 @@ class KoopmanViT(BaseModel):  # ✅ Inherits from BaseModel
         # Decoder to reconstruct velocity fields
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(embed_dim, in_channels, kernel_size=3, stride=1, padding=1),
+            self.dropout,
             nn.Tanh()
         )
     
