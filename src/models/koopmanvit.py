@@ -44,21 +44,21 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
             nn.Tanh()
         )
     
-    def forward(self, x):
+    def forward(self, x, time=None, **kwargs):  # Accept 'time' argument
         batch_size, time_steps, channels, height, width = x.shape
         x = x.view(batch_size * time_steps, channels, height, width)
-
+        
         # Extract spatial features
-        x = self.vit(x)
-        x = x.view(batch_size, time_steps, -1)
-
+        x = self.vit(x)  # (batch*time_steps, embed_dim)
+        x = x.view(batch_size, time_steps, -1)  # Reshape back to time series format
+        
         # Koopman evolution
         koopman_latent = self.koopman_operator(x)
         evolved_latent = self.koopman_basis(koopman_latent)
-
+        
         # Reshape and decode
         evolved_latent = evolved_latent.view(batch_size * time_steps, -1, height, width)
         out = self.decoder(evolved_latent)
         out = out.view(batch_size, time_steps, channels, height, width)
-
+        
         return out
