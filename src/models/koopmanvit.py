@@ -21,6 +21,10 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
         self.save_hyperparameters()  # Store hparams (used in DYffusion)
 
         self.dropout = nn.Dropout(dropout) 
+        
+        # Convert input channels if necessary
+        self.pre_vit = nn.Conv2d(in_channels, 3, kernel_size=1) if in_channels != 3 else nn.Identity()
+
         # Vision Transformer for spatial feature extraction
         self.vit = timm.create_model(
             "vit_base_patch16_224",
@@ -48,11 +52,15 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
         batch_size, time_steps, channels, height, width = x.shape
         x = x.view(batch_size * time_steps, channels, height, width)
         
+        # Preprocess input for ViT (convert to 3-channel if needed)
+        x = self.pre_vit(x)
+        
         # Extract spatial features
         x = self.vit(x)  # (batch*time_steps, embed_dim)
         x = x.view(batch_size, time_steps, -1)  # Reshape back to time series format
         
         # Koopman evolution
+        x = self.dropout(x)  # Apply dropout before Koopman evolution
         koopman_latent = self.koopman_operator(x)
         evolved_latent = self.koopman_basis(koopman_latent)
         
