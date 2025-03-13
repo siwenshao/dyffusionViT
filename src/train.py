@@ -90,6 +90,11 @@ def run_model(config: DictConfig) -> float:
             signal.signal(signal.SIGUSR2, divein(trainer))
 
         def fit(ckpt_filepath=None):
+            print("Sanity Check: Input Shape Before Training")
+            for batch in datamodule.train_dataloader():  # Get a batch from DataLoader
+                inputs, labels = batch if isinstance(batch, (list, tuple)) else (batch, None)
+                print(f"Dataset Image Shape: {inputs.shape}")  # ✅ Print input shape before training
+                break  # Only print for the first batch
             trainer.fit(model, datamodule=datamodule, ckpt_path=ckpt_filepath)
 
         try:
