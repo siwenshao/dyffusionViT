@@ -72,7 +72,14 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
         evolved_latent = self.koopman_basis(koopman_latent)
         
         # Reshape and decode
-        evolved_latent = evolved_latent.view(batch_size * time_steps, -1, height, width)
+        #evolved_latent = evolved_latent.view(batch_size * time_steps, -1, height, width)
+        # 🔍 Debugging: Print shapes before reshaping
+        print(f"💡 KoopmanViT latent shape: {evolved_latent.shape}")  
+
+        # Ensure reshaping is valid
+        num_features = evolved_latent.shape[-1]
+        evolved_latent = evolved_latent.view(batch_size * time_steps, num_features, 1, 1)  # 🛠 Adjust for missing dims
+
         out = self.decoder(evolved_latent)
         out = out.view(batch_size, time_steps, channels, height, width)
         
