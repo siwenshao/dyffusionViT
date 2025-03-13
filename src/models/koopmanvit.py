@@ -3,10 +3,11 @@ import torch.nn as nn
 import timm
 from src.models._base_model import BaseModel  # ✅ Import BaseModel from DYffusion
 
-class KoopmanViT(BaseModel):  # ✅ Change inheritance from nn.Module to BaseModel
+class KoopmanViT(BaseModel):  # ✅ Inherits from BaseModel
     def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, 
-                 num_heads=8, depth=6, koopman_dim=128, **kwargs):
+                 num_heads=8, depth=6, koopman_dim=128, with_time_emb=False, **kwargs):  # ✅ Add with_time_emb
         super().__init__(**kwargs)  # ✅ Pass kwargs to BaseModel
+        self.with_time_emb = with_time_emb  # ✅ Store the parameter (but do nothing with it)
 
         self.save_hyperparameters()  # ✅ Store hparams (used in DYffusion)
 
