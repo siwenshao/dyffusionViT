@@ -477,21 +477,49 @@ class DYffusion(BaseDYffusion):
                 f"last interpolation step+1=i_N=i_{self.num_timesteps - 1}={last_d_to_i_tstep + 1}"
             )
 
+    # def _interpolate(
+    #     self, initial_condition: Tensor, x_last: Tensor, t: Tensor, static_condition: Optional[Tensor] = None, **kwargs
+    # ):
+    #     # interpolator networks uses time in [1, horizon-1]
+    #     assert (0 < t).all() and (
+    #         t < self.interpolator_horizon
+    #     ).all(), f"interpolate time must be in (0, {self.interpolator_horizon}), got {t}"
+    #     # select condition data to be consistent with the interpolator training data
+    #     interpolator_inputs = torch.cat([initial_condition, x_last], dim=1)
+    #     kwargs["reshape_ensemble_dim"] = False
+    #     interpolator_outputs = self.interpolator.predict(
+    #         interpolator_inputs, condition=static_condition, time=t, **kwargs
+    #     )
+    #     interpolator_outputs = interpolator_outputs["preds"]
+    #     return interpolator_outputs
+    
     def _interpolate(
         self, initial_condition: Tensor, x_last: Tensor, t: Tensor, static_condition: Optional[Tensor] = None, **kwargs
     ):
-        # interpolator networks uses time in [1, horizon-1]
+        # Interpolator networks use time in [1, horizon-1]
         assert (0 < t).all() and (
             t < self.interpolator_horizon
         ).all(), f"interpolate time must be in (0, {self.interpolator_horizon}), got {t}"
-        # select condition data to be consistent with the interpolator training data
+
+        # Ensure interpolator is UNet
+        print(f"Using UNet interpolator. Interpolator type: {type(self.interpolator)}")
+
+        # Select condition data to be consistent with the interpolator training data
         interpolator_inputs = torch.cat([initial_condition, x_last], dim=1)
         kwargs["reshape_ensemble_dim"] = False
+
+        # Get interpolated predictions
         interpolator_outputs = self.interpolator.predict(
             interpolator_inputs, condition=static_condition, time=t, **kwargs
         )
         interpolator_outputs = interpolator_outputs["preds"]
+
+        # ✅ Reshape the UNet output to match KoopmanViT expected format
+        batch_size, time_steps, channels, height, width = interpolator_outputs.shape
+        interpolator_outputs = interpolator_outputs.view(batch_size, time_steps, -1)  # Flatten spatial dims
+
         return interpolator_outputs
+
 
     def p_losses(self, xt_last: Tensor, condition: Tensor, t: Tensor, static_condition: Tensor = None):
         r"""
