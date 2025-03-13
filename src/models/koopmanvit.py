@@ -5,23 +5,13 @@ from src.models._base_model import BaseModel  # Import BaseModel from DYffusion
 
 class KoopmanViT(BaseModel):  # Inherits from BaseModel
     def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, 
-                 num_heads=8, depth=6, koopman_dim=128, with_time_emb=False, dropout=0.0, **kwargs):  # ✅ Add with_time_emb
+                 num_heads=8, depth=6, koopman_dim=128, with_time_emb=False, dropout=0.0, **kwargs):  
         super().__init__(**kwargs)  # Pass kwargs to BaseModel
-        self.with_time_emb = with_time_emb  # Store the parameter (but do nothing with it)
-        
-# In UNet-based models, with_time_emb=True means the model:
-
-# Adds a time encoding to inputs.
-# Improves temporal generalization by learning embeddings for time steps.
-# In KoopmanViT:
-
-# Time information is handled differently (via Koopman evolution).
-# Koopman theory models continuous time evolution explicitly, so adding extra time embeddings might be redundant.
-
+        self.with_time_emb = with_time_emb  
         self.save_hyperparameters()  # Store hparams (used in DYffusion)
 
         self.dropout = nn.Dropout(dropout) 
-        
+
         # Convert input channels if necessary
         self.pre_vit = nn.Conv2d(in_channels, 3, kernel_size=1) if in_channels != 3 else nn.Identity()
 
@@ -41,47 +31,50 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
         self.koopman_operator = nn.Linear(embed_dim, koopman_dim, bias=False)
         self.koopman_basis = nn.Linear(koopman_dim, embed_dim)
 
-        # Decoder to reconstruct velocity fields
+        # Decoder to reconstruct velocity fields with upsampling
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(embed_dim, in_channels, kernel_size=3, stride=1, padding=1),
-            self.dropout,
+            nn.ConvTranspose2d(embed_dim, 128, kernel_size=3, stride=1, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(128, 64, kernel_size=3, stride=2, padding=1, output_padding=1),  # Upsample
+            nn.ReLU(),
+            nn.ConvTranspose2d(64, in_channels, kernel_size=3, stride=2, padding=1, output_padding=1),  # Upsample again
             nn.Tanh()
         )
     
-    def forward(self, x, time=None, **kwargs):  # Accept 'time' argument
-        print(f"KoopmanViT received input of shape: {x.shape}")  # ✅ Debugging step
-    
+    def forward(self, x, time=None, **kwargs):  
+        print(f"🔍 KoopmanViT received input shape: {x.shape}")  
+
         # Dynamically handle missing time_steps dimension
-        if x.ndim == 4:  # If time_steps is missing
+        if x.ndim == 4:  
             print("🚨 WARNING: Time dimension is missing! Adding time_steps=1")
-            x = x.unsqueeze(1)  # Add a time dimension at dim=1
-        
+            x = x.unsqueeze(1)  
+
         batch_size, time_steps, channels, height, width = x.shape
         x = x.view(batch_size * time_steps, channels, height, width)
-        
+
         # Preprocess input for ViT (convert to 3-channel if needed)
         x = self.pre_vit(x)
-        
+
         # Extract spatial features
-        x = self.vit(x)  # (batch*time_steps, embed_dim)
-        x = x.view(batch_size, time_steps, -1)  # Reshape back to time series format
-        
+        x = self.vit(x)  
+        x = x.view(batch_size, time_steps, -1)  
+
         # Koopman evolution
-        x = self.dropout(x)  # Apply dropout before Koopman evolution
+        x = self.dropout(x)  
         koopman_latent = self.koopman_operator(x)
         evolved_latent = self.koopman_basis(koopman_latent)
-        
-        # Reshape and decode
-        #evolved_latent = evolved_latent.view(batch_size * time_steps, -1, height, width)
-        # 🔍 Debugging: Print shapes before reshaping
+
         print(f"💡 KoopmanViT latent shape: {evolved_latent.shape}")  
 
         # Ensure reshaping is valid
         num_features = evolved_latent.shape[-1]
-        evolved_latent = evolved_latent.view(batch_size * time_steps, num_features, 1, 1)  # 🛠 Adjust for missing dims
+        evolved_latent = evolved_latent.view(batch_size * time_steps, num_features, 1, 1)  
 
         out = self.decoder(evolved_latent)
-        # 🔍 Debugging: Print decoder output shape
+
+        # 🛠 Ensure correct output size
+        out = nn.functional.interpolate(out, size=(height, width), mode="bilinear", align_corners=False)
+
         print(f"📏 Decoder output shape: {out.shape} | Expected: ({batch_size}, {time_steps}, {channels}, {height}, {width})")
 
         # Ensure reshaping is valid
@@ -90,5 +83,5 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
             print(f"🚨 WARNING: Decoder output has {out.numel()} elements, expected {num_elements}. Reshaping may be incorrect!")
 
         out = out.view(batch_size, time_steps, channels, height, width)
-        
+
         return out
