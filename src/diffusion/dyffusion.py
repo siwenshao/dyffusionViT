@@ -496,32 +496,41 @@ class DYffusion(BaseDYffusion):
     def _interpolate(
         self, initial_condition: Tensor, x_last: Tensor, t: Tensor, static_condition: Optional[Tensor] = None, **kwargs
     ):
-        # Interpolator networks use time in [1, horizon-1]
+        """Interpolates input data using the UNet interpolator and ensures compatibility with KoopmanViT."""
+        
+        # 🔍 Ensure time is within the valid interpolation range
         assert (0 < t).all() and (
             t < self.interpolator_horizon
-        ).all(), f"interpolate time must be in (0, {self.interpolator_horizon}), got {t}"
+        ).all(), f"Interpolate time must be in (0, {self.interpolator_horizon}), got {t}"
 
-        # Ensure interpolator is UNet
+        # ✅ Ensure interpolator is UNet (for debugging)
         print(f"Using UNet interpolator. Interpolator type: {type(self.interpolator)}")
 
-        # Select condition data to be consistent with the interpolator training data
-        # Ensure both tensors have the same number of dimensions
-        if x_last.ndim == 5:  # If x_last has time dimension
+        # 🔧 Ensure both tensors have the same number of dimensions before concatenation
+        if x_last.ndim == 5:  # If x_last has an extra time dimension
             x_last = x_last.squeeze(1)  # Remove time_steps=1 dimension
-        interpolator_inputs = torch.cat([initial_condition, x_last], dim=1)
+
+        interpolator_inputs = torch.cat([initial_condition, x_last], dim=1)  # Concatenate along channel dim
         kwargs["reshape_ensemble_dim"] = False
 
-        # Get interpolated predictions
+        # 🔄 Get interpolated predictions from UNet
         interpolator_outputs = self.interpolator.predict(
             interpolator_inputs, condition=static_condition, time=t, **kwargs
         )
-        interpolator_outputs = interpolator_outputs["preds"]
+        interpolator_outputs = interpolator_outputs["preds"]  # Extract predictions
 
-        # ✅ Reshape the UNet output to match KoopmanViT expected format
-        batch_size, time_steps, channels, height, width = interpolator_outputs.shape
-        interpolator_outputs = interpolator_outputs.view(batch_size, time_steps, -1)  # Flatten spatial dims
+        # 🔍 Debugging: Print interpolator output shape before processing
+        print(f"🔍 Interpolator output shape BEFORE: {interpolator_outputs.shape}")
+
+        # ✅ Ensure UNet output has 5 dimensions (batch, time_steps, channels, height, width)
+        if interpolator_outputs.ndim == 4:
+            interpolator_outputs = interpolator_outputs.unsqueeze(1)  # Add missing time_steps=1 dimension
+
+        # 🔍 Debugging: Print shape after ensuring correct format
+        print(f"✅ Interpolator output shape AFTER: {interpolator_outputs.shape}")
 
         return interpolator_outputs
+
 
 
     def p_losses(self, xt_last: Tensor, condition: Tensor, t: Tensor, static_condition: Tensor = None):
