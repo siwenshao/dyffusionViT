@@ -1,16 +1,23 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision.models.vision_transformer import VisionTransformer
+import timm  # Import timm for non-square ViT support
 
 class KoopmanViT(nn.Module):
-    def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, num_heads=8, depth=6, koopman_dim=128,  **kwargs):
+    def __init__(self, img_size=(221, 42), patch_size=16, in_channels=3, embed_dim=256, 
+                 num_heads=8, depth=6, koopman_dim=128, **kwargs):
         super().__init__()
-        
+
         # Vision Transformer for spatial feature extraction
-        self.vit = VisionTransformer(
-            image_size=img_size, patch_size=patch_size, num_layers=depth,
-            num_heads=num_heads, hidden_dim=embed_dim, mlp_dim=embed_dim * 4, num_classes=0
+        self.vit = timm.create_model(
+            "vit_base_patch16_224",  # Base ViT model with patch size 16
+            pretrained=False,         # Do not use pretrained weights
+            img_size=img_size,        # ✅ Allows non-square input sizes
+            patch_size=patch_size,
+            num_classes=0,             # No classification head
+            embed_dim=embed_dim,
+            depth=depth,
+            num_heads=num_heads
         )
         
         # Koopman Operator

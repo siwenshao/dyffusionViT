@@ -24,6 +24,7 @@ spec:
           "mkdir -p /workspace /workspace/data && \
           apt update && apt install -y curl && \
           apt update && apt install -y tmux && \
+          pip install timm && \
           cd /workspace && \
           rm -rf dyffusionViT && git clone https://github.com/siwenshao/dyffusionViT.git && \
           mkdir -p /workspace/data/physical-nn-benchmark && \
