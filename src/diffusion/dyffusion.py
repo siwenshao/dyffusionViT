@@ -505,6 +505,9 @@ class DYffusion(BaseDYffusion):
         print(f"Using UNet interpolator. Interpolator type: {type(self.interpolator)}")
 
         # Select condition data to be consistent with the interpolator training data
+        # Ensure both tensors have the same number of dimensions
+        if x_last.ndim == 5:  # If x_last has time dimension
+            x_last = x_last.squeeze(1)  # Remove time_steps=1 dimension
         interpolator_inputs = torch.cat([initial_condition, x_last], dim=1)
         kwargs["reshape_ensemble_dim"] = False
 
