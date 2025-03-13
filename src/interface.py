@@ -3,6 +3,8 @@ from typing import Any, Dict, Optional
 import hydra
 import torch
 from omegaconf import DictConfig
+from omegaconf import ListConfig
+
 
 from src.datamodules.abstract_datamodule import BaseDataModule
 from src.experiment_types._base_experiment import BaseExperiment
@@ -152,7 +154,9 @@ def reload_model_from_config_and_ckpt(
     model, data_module = get_model_and_data(config) if also_datamodule else (get_lightning_module(config), None)
     # Reload model
     # device = device or torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model_state = torch.load(model_path, map_location=device)
+    torch.serialization.add_safe_globals([ListConfig])
+    model_state = torch.load(model_path, map_location=device, weights_only=False)
+
     # rename weights (sometimes needed for backwards compatibility)
     state_dict = rename_state_dict_keys_and_save(model_state, model_path)
     # Reload weights
@@ -191,11 +195,16 @@ def get_checkpoint_from_path_or_wandb(
         # assert model_checkpoint_path is None, 'must provide either wandb_run_path or model_checkpoint_path'
         override_key_value = ["module.verbose=False"]
         wandb_kwargs = wandb_kwargs or {}
+        
+        # Allow OmegaConf ListConfig globally for PyTorch's safe deserialization
+        torch.serialization.add_safe_globals([ListConfig])
+        
         model = reload_checkpoint_from_wandb(
             run_id=wandb_run_id,
             also_datamodule=False,
             override_key_value=override_key_value,
             local_checkpoint_path=model_checkpoint_path,
+            weights_only=False,  # Set to False to avoid UnpicklingError
             **wandb_kwargs,
         )["model"]
     else:
