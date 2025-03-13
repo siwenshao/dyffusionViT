@@ -50,15 +50,11 @@ class KoopmanViT(BaseModel):  # Inherits from BaseModel
     
     def forward(self, x, time=None, **kwargs):  # Accept 'time' argument
         print(f"KoopmanViT received input of shape: {x.shape}")  # ✅ Debugging step
-        batch_size = x.shape[0]
-
-        # Check if time_steps is missing
-        if x.ndim == 4:
-            print("🚨 WARNING: Time dimension is missing! Expected 5D input.")
-            time_steps = 1
-            x = x.unsqueeze(1)  # Temporary fix if needed
-        else:
-            time_steps = x.shape[1]  # ✅ Correctly get the number of time steps
+    
+        # Dynamically handle missing time_steps dimension
+        if x.ndim == 4:  # If time_steps is missing
+            print("🚨 WARNING: Time dimension is missing! Adding time_steps=1")
+            x = x.unsqueeze(1)  # Add a time dimension at dim=1
         
         batch_size, time_steps, channels, height, width = x.shape
         x = x.view(batch_size * time_steps, channels, height, width)
