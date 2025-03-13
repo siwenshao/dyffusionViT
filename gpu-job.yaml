@@ -1,0 +1,50 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: dyffusion-job
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: workdir
+        persistentVolumeClaim:
+          claimName: dyffusion-pvc  # Attach a Persistent Volume for code
+      - name: datadir
+        persistentVolumeClaim:
+          claimName: dyffusion-data-pvc  # Attach a Persistent Volume for dataset storage
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 100Gi 
+      containers:
+      - name: dyffusion-container
+        image: lulushao/dyffusion:latest # Ensure this image has Git & Python
+        command: ["/bin/bash", "-c", 
+          "mkdir -p /workspace /workspace/data && \
+          apt update && apt install -y curl && \
+          apt update && apt install -y tmux && \
+          cd /workspace && \
+          rm -rf dyffusionViT && git clone https://github.com/siwenshao/dyffusionViT.git && \
+          mkdir -p /workspace/data/physical-nn-benchmark && \
+          mkdir -p /root/data/physical-nn-benchmark && \
+          ln -sfn /workspace/data/spring-mesh /root/data/physical-nn-benchmark/spring-mesh && \
+          ln -sfn /workspace/data/navier-stokes-multi /root/data/physical-nn-benchmark/navier-stokes-multi && \
+          cd dyffusionViT && \
+          sleep infinity"]
+        resources:
+          requests:
+            cpu: "2"
+            memory: "100Gi"
+            nvidia.com/gpu: 1
+          limits:
+            cpu: "2.4"
+            memory: "100Gi"
+            nvidia.com/gpu: 1
+        volumeMounts:
+        - mountPath: "/workspace"
+          name: workdir
+        - mountPath: "/workspace/data"  # Attach dataset storage
+          name: datadir
+        - mountPath: "/dev/shm"
+          name: dshm

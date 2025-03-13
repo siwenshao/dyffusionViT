@@ -7,6 +7,7 @@ defaults:
   - navier_stokes.yaml
   - override /module: forecasting_multi_horizon_dyffusion.yaml
   - override /diffusion: dyffusion.yaml
+  - override /model: koopmanvit_navier_stokes.yaml  # Change model from UNet to KoopmanViT!!!!!
   - _self_
 
 name: "NavierStokes-MH${datamodule.horizon}-DYffusion"

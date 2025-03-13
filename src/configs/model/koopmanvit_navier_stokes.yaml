@@ -1,0 +1,18 @@
+# @package _global_
+
+defaults:
+  - _base_model_config.yaml   # general, model independent, parameters
+  - _self_
+
+model:
+  _target_: src.models.koopmanvit.KoopmanViT  # Replace UNet with KoopmanViT
+  img_size: [221, 42]   # Navier-Stokes data dimensions
+  patch_size: 16
+  in_channels: 3        # Assuming 3-channel input (velocity components)
+  embed_dim: 256
+  num_heads: 8
+  depth: 6
+  koopman_dim: 128
+
+trainer:
+  deterministic: False   # Keep this unchanged
