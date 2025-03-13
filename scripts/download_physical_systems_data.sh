@@ -2,7 +2,7 @@
 
 # Taken and adapted from: https://github.com/karlotness/nn-benchmark/blob/master/download.
 # EDIT DATA_DIR here:
-DATA_DIR="$HOME/data/physical-nn-benchmark"
+DATA_DIR="/workspace/data"
 
 # Download datasets and experiment outputs from storage in the NYU
 # Faculty Digital Archive
